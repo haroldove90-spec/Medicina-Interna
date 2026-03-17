@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, Component, ErrorInfo, ReactNode } from 'react';
 import { 
   Users, 
   Activity, 
@@ -330,13 +330,8 @@ const Card: React.FC<{ children: React.ReactNode, className?: string }> = ({ chi
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'patients' | 'agenda' | 'tools' | 'profile' | 'media'>('dashboard');
-  const [user, setUser] = useState<any>({ id: 'demo-user', email: 'demo@example.com' });
-  const [userProfile, setUserProfile] = useState<UserProfile | null>({
-    id: 'demo-user',
-    role: 'Medico',
-    full_name: 'Dr. Jesús Monteón (Demo)',
-    avatar_url: null
-  });
+  const [user, setUser] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [showPassword, setShowPassword] = useState(false);
@@ -381,6 +376,8 @@ export default function App() {
       setActiveTab('dashboard');
     }
   }, [userProfile, activeTab]);
+
+  const isSupabaseConfigured = (import.meta as any).env.VITE_SUPABASE_URL && (import.meta as any).env.VITE_SUPABASE_ANON_KEY;
 
   const fetchPatients = async () => {
     if (!isSupabaseConfigured) {
@@ -462,9 +459,18 @@ export default function App() {
   };
 
   useEffect(() => {
-    // Desactivado temporalmente para bypass
-    setAuthLoading(false);
-    /*
+    if (!isSupabaseConfigured) {
+      setUser({ id: 'demo-user', email: 'demo@example.com' });
+      setUserProfile({
+        id: 'demo-user',
+        role: 'Medico',
+        full_name: 'Dr. Jesús Monteón (Demo)',
+        avatar_url: null
+      });
+      setAuthLoading(false);
+      return;
+    }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (session?.user) fetchProfile(session.user.id);
@@ -481,8 +487,7 @@ export default function App() {
     });
 
     return () => subscription.unsubscribe();
-    */
-  }, []);
+  }, [isSupabaseConfigured]);
 
   const fetchProfile = async (userId: string) => {
     const localProfile = localStorage.getItem(`profile_${userId}`);
@@ -700,7 +705,9 @@ export default function App() {
     
     if (editingPatient) {
       const { error } = await supabase.from('patients').update(data).eq('id', editingPatient.id);
-      if (!error) {
+      if (error) {
+        alert('Error al actualizar expediente: ' + error.message);
+      } else {
         setEditingPatient(null);
         setIsPatientModalOpen(false);
         fetchPatients();
@@ -708,7 +715,10 @@ export default function App() {
       }
     } else {
       const { error } = await supabase.from('patients').insert([data]);
-      if (!error) {
+      if (error) {
+        alert('Error al crear expediente: ' + error.message);
+        console.error('Insert error:', error);
+      } else {
         setIsPatientModalOpen(false);
         fetchPatients();
       }
@@ -740,14 +750,18 @@ export default function App() {
     
     if (editingAppointment) {
       const { error } = await supabase.from('appointments').update(data).eq('id', editingAppointment.id);
-      if (!error) {
+      if (error) {
+        alert('Error al actualizar cita: ' + error.message);
+      } else {
         setEditingAppointment(null);
         setIsAppointmentModalOpen(false);
         fetchAppointments();
       }
     } else {
       const { error } = await supabase.from('appointments').insert([data]);
-      if (!error) {
+      if (error) {
+        alert('Error al agendar cita: ' + error.message);
+      } else {
         setIsAppointmentModalOpen(false);
         fetchAppointments();
       }
@@ -775,14 +789,18 @@ export default function App() {
     
     if (editingConsultation) {
       const { error } = await supabase.from('consultations').update(data).eq('id', editingConsultation.id);
-      if (!error) {
+      if (error) {
+        alert('Error al actualizar nota: ' + error.message);
+      } else {
         setEditingConsultation(null);
         setIsConsultationModalOpen(false);
         fetchPatientDetail(selectedPatientId);
       }
     } else {
       const { error } = await supabase.from('consultations').insert([data]);
-      if (!error) {
+      if (error) {
+        alert('Error al guardar nota: ' + error.message);
+      } else {
         setIsConsultationModalOpen(false);
         fetchPatientDetail(selectedPatientId);
       }
@@ -810,14 +828,18 @@ export default function App() {
     
     if (editingCondition) {
       const { error } = await supabase.from('chronic_conditions').update(data).eq('id', editingCondition.id);
-      if (!error) {
+      if (error) {
+        alert('Error al actualizar condición: ' + error.message);
+      } else {
         setEditingCondition(null);
         setIsConditionModalOpen(false);
         fetchPatientDetail(selectedPatientId);
       }
     } else {
       const { error } = await supabase.from('chronic_conditions').insert([data]);
-      if (!error) {
+      if (error) {
+        alert('Error al agregar condición: ' + error.message);
+      } else {
         setIsConditionModalOpen(false);
         fetchPatientDetail(selectedPatientId);
       }
@@ -845,14 +867,18 @@ export default function App() {
     
     if (editingMedication) {
       const { error } = await supabase.from('medications').update(data).eq('id', editingMedication.id);
-      if (!error) {
+      if (error) {
+        alert('Error al actualizar medicamento: ' + error.message);
+      } else {
         setEditingMedication(null);
         setIsMedicationModalOpen(false);
         fetchPatientDetail(selectedPatientId);
       }
     } else {
       const { error } = await supabase.from('medications').insert([data]);
-      if (!error) {
+      if (error) {
+        alert('Error al agregar medicamento: ' + error.message);
+      } else {
         setIsMedicationModalOpen(false);
         fetchPatientDetail(selectedPatientId);
       }
@@ -1596,8 +1622,6 @@ export default function App() {
     );
   };
 
-  const isSupabaseConfigured = (import.meta as any).env.VITE_SUPABASE_URL && (import.meta as any).env.VITE_SUPABASE_ANON_KEY;
-
   // --- Render ---
 
   if (authLoading) return (
@@ -2204,31 +2228,31 @@ export default function App() {
       <Modal isOpen={isPatientModalOpen} onClose={() => { setIsPatientModalOpen(false); setEditingPatient(null); }} title={editingPatient ? "Editar Expediente" : "Nuevo Expediente"}>
         <form onSubmit={handleCreatePatient} className="space-y-6 max-h-[70vh] overflow-y-auto px-2">
           <div className="grid grid-cols-2 gap-4">
-            <input name="first_name" required defaultValue={editingPatient?.first_name} placeholder="Nombre" className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm outline-none focus:ring-2 focus:ring-indigo-500/10" />
-            <input name="last_name" required defaultValue={editingPatient?.last_name} placeholder="Apellido" className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm outline-none focus:ring-2 focus:ring-indigo-500/10" />
+            <input name="first_name" required defaultValue={editingPatient?.first_name} placeholder="Nombre" className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm outline-none focus:ring-2 focus:ring-indigo-500/10" />
+            <input name="last_name" required defaultValue={editingPatient?.last_name} placeholder="Apellido" className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm outline-none focus:ring-2 focus:ring-indigo-500/10" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Fecha de Nacimiento</label>
-              <input type="date" name="date_of_birth" required defaultValue={editingPatient?.date_of_birth} className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm outline-none" />
+              <input type="date" name="date_of_birth" required defaultValue={editingPatient?.date_of_birth} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm outline-none" />
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Género</label>
-              <select name="gender" defaultValue={editingPatient?.gender || 'M'} className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm outline-none">
+              <select name="gender" defaultValue={editingPatient?.gender || 'M'} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm outline-none">
                 <option value="M">Masculino</option>
                 <option value="F">Femenino</option>
               </select>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <input name="blood_type" defaultValue={editingPatient?.blood_type} placeholder="Tipo Sangre" className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm outline-none" />
-            <input name="phone" defaultValue={editingPatient?.phone} placeholder="Teléfono" className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm outline-none" />
+            <input name="blood_type" defaultValue={editingPatient?.blood_type} placeholder="Tipo Sangre" className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm outline-none focus:ring-2 focus:ring-indigo-500/10" />
+            <input name="phone" defaultValue={editingPatient?.phone} placeholder="Teléfono" className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm outline-none focus:ring-2 focus:ring-indigo-500/10" />
           </div>
-          <input name="email" type="email" defaultValue={editingPatient?.email} placeholder="Correo Electrónico" className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm outline-none" />
-          <input name="address" defaultValue={editingPatient?.address} placeholder="Dirección" className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm outline-none" />
+          <input name="email" type="email" defaultValue={editingPatient?.email} placeholder="Correo Electrónico" className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm outline-none focus:ring-2 focus:ring-indigo-500/10" />
+          <input name="address" defaultValue={editingPatient?.address} placeholder="Dirección" className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm outline-none focus:ring-2 focus:ring-indigo-500/10" />
           <div className="grid grid-cols-2 gap-4">
-            <textarea name="allergies" defaultValue={editingPatient?.allergies} placeholder="Alergias (Ej. Penicilina)" className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm outline-none resize-none h-24" />
-            <textarea name="chronic_history" defaultValue={editingPatient?.chronic_history} placeholder="Antecedentes Crónicos (Ej. HTA, DM2)" className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm outline-none resize-none h-24" />
+            <textarea name="allergies" defaultValue={editingPatient?.allergies} placeholder="Alergias (Ej. Penicilina)" className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm outline-none resize-none h-24 focus:ring-2 focus:ring-indigo-500/10" />
+            <textarea name="chronic_history" defaultValue={editingPatient?.chronic_history} placeholder="Antecedentes Crónicos (Ej. HTA, DM2)" className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm outline-none resize-none h-24 focus:ring-2 focus:ring-indigo-500/10" />
           </div>
           <button type="submit" className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold">{editingPatient ? "Guardar Cambios" : "Crear Expediente"}</button>
         </form>
@@ -2474,7 +2498,6 @@ export default function App() {
           <p className="text-slate-500 font-bold">Esta calculadora estará disponible en la próxima actualización.</p>
         </div>
       </Modal>
-
     </div>
   );
 }
