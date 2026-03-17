@@ -1443,18 +1443,26 @@ export default function App() {
   };
 
   const ProfileView = () => {
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
     return (
       <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
         <div className="flex flex-col md:flex-row gap-8">
           {/* Avatar Section */}
           <Card className="md:w-1/3 flex flex-col items-center text-center">
             <div className="relative group">
-              <div className="w-32 h-32 rounded-3xl overflow-hidden shadow-2xl border-4 border-white mb-4">
-                <img 
-                  src={userProfile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.id}`} 
-                  alt="Avatar" 
-                  className="w-full h-full object-cover"
-                />
+              <div className="w-32 h-32 rounded-3xl overflow-hidden shadow-2xl border-4 border-white mb-4 bg-slate-100 flex items-center justify-center">
+                {userProfile?.avatar_url ? (
+                  <img 
+                    src={userProfile.avatar_url} 
+                    alt="Avatar" 
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <UserIcon className="w-12 h-12 text-slate-300" />
+                )}
               </div>
               <label className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-3xl cursor-pointer">
                 <Camera className="w-8 h-8 text-white" />
@@ -1497,21 +1505,39 @@ export default function App() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Nueva Contraseña</label>
-                    <input 
-                      name="password"
-                      type="password" 
-                      className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm outline-none focus:ring-2 focus:ring-indigo-500/10"
-                      placeholder="••••••••"
-                    />
+                    <div className="relative">
+                      <input 
+                        name="password"
+                        type={showPassword ? "text" : "password"} 
+                        className="w-full bg-slate-50 border-none rounded-2xl p-4 pr-12 text-sm outline-none focus:ring-2 focus:ring-indigo-500/10"
+                        placeholder="••••••••"
+                      />
+                      <button 
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 transition-colors"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Confirmar Contraseña</label>
-                    <input 
-                      name="confirmPassword"
-                      type="password" 
-                      className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm outline-none focus:ring-2 focus:ring-indigo-500/10"
-                      placeholder="••••••••"
-                    />
+                    <div className="relative">
+                      <input 
+                        name="confirmPassword"
+                        type={showConfirmPassword ? "text" : "password"} 
+                        className="w-full bg-slate-50 border-none rounded-2xl p-4 pr-12 text-sm outline-none focus:ring-2 focus:ring-indigo-500/10"
+                        placeholder="••••••••"
+                      />
+                      <button 
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 transition-colors"
+                      >
+                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <button type="submit" className="w-full bg-white border-2 border-slate-100 text-slate-600 py-4 rounded-2xl font-bold text-sm hover:bg-slate-50 transition-all">Cambiar Contraseña</button>
