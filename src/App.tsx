@@ -53,6 +53,7 @@ import { format, isToday, parseISO, startOfDay, endOfDay } from 'date-fns';
 import { GoogleGenAI } from "@google/genai";
 import { supabase } from './lib/supabase';
 import { Patient, PatientDetail, LabResult, Appointment, UserProfile } from './types';
+import { MOCK_PATIENTS, MOCK_APPOINTMENTS, getMockPatientDetail } from './mockData';
 
 // --- Components ---
 
@@ -372,6 +373,11 @@ export default function App() {
   }, [userProfile, activeTab]);
 
   const fetchPatients = async () => {
+    if (!isSupabaseConfigured) {
+      setPatients(MOCK_PATIENTS);
+      setLoading(false);
+      return;
+    }
     const { data, error } = await supabase
       .from('patients')
       .select('*')
@@ -383,6 +389,10 @@ export default function App() {
   };
 
   const fetchAppointments = async () => {
+    if (!isSupabaseConfigured) {
+      setAppointments(MOCK_APPOINTMENTS);
+      return;
+    }
     const { data, error } = await supabase
       .from('appointments')
       .select(`
@@ -407,6 +417,11 @@ export default function App() {
   };
 
   const fetchPatientDetail = async (id: string) => {
+    if (!isSupabaseConfigured) {
+      setPatientDetail(getMockPatientDetail(id));
+      setAiSummary('');
+      return;
+    }
     const { data: patient, error: pError } = await supabase
       .from('patients')
       .select('*')
@@ -644,6 +659,11 @@ export default function App() {
 
   const handleCreatePatient = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!isSupabaseConfigured) {
+      alert('Modo Demo: Paciente creado localmente (no persistente)');
+      setIsPatientModalOpen(false);
+      return;
+    }
     const formData = new FormData(e.currentTarget);
     const data = Object.fromEntries(formData.entries());
     
@@ -665,6 +685,10 @@ export default function App() {
   };
 
   const handleDeletePatient = async (id: string) => {
+    if (!isSupabaseConfigured) {
+      alert('Modo Demo: Paciente eliminado localmente (no persistente)');
+      return;
+    }
     if (!confirm('¿Está seguro de eliminar este expediente? Se borrarán todos sus registros asociados.')) return;
     const { error } = await supabase.from('patients').delete().eq('id', id);
     if (!error) {
@@ -675,6 +699,11 @@ export default function App() {
 
   const handleAddAppointment = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!isSupabaseConfigured) {
+      alert('Modo Demo: Cita agendada localmente (no persistente)');
+      setIsAppointmentModalOpen(false);
+      return;
+    }
     const formData = new FormData(e.currentTarget);
     const data = Object.fromEntries(formData.entries());
     
@@ -703,6 +732,13 @@ export default function App() {
   const handleAddConsultation = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!selectedPatientId) return;
+
+    if (!isSupabaseConfigured) {
+      alert('Modo Demo: Consulta guardada localmente (no persistente)');
+      setIsConsultationModalOpen(false);
+      return;
+    }
+
     const formData = new FormData(e.currentTarget);
     const data = { ...Object.fromEntries(formData.entries()), patient_id: selectedPatientId };
     
@@ -731,6 +767,13 @@ export default function App() {
   const handleAddCondition = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!selectedPatientId) return;
+
+    if (!isSupabaseConfigured) {
+      alert('Modo Demo: Condición agregada localmente (no persistente)');
+      setIsConditionModalOpen(false);
+      return;
+    }
+
     const formData = new FormData(e.currentTarget);
     const data = { ...Object.fromEntries(formData.entries()), patient_id: selectedPatientId };
     
@@ -759,6 +802,13 @@ export default function App() {
   const handleAddMedication = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!selectedPatientId) return;
+
+    if (!isSupabaseConfigured) {
+      alert('Modo Demo: Medicamento agregado localmente (no persistente)');
+      setIsMedicationModalOpen(false);
+      return;
+    }
+
     const formData = new FormData(e.currentTarget);
     const data = { ...Object.fromEntries(formData.entries()), patient_id: selectedPatientId };
     
@@ -787,6 +837,13 @@ export default function App() {
   const handleAddLab = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!selectedPatientId) return;
+
+    if (!isSupabaseConfigured) {
+      alert('Modo Demo: Resultado de laboratorio agregado localmente (no persistente)');
+      setIsLabModalOpen(false);
+      return;
+    }
+
     const formData = new FormData(e.currentTarget);
     const data = { ...Object.fromEntries(formData.entries()), patient_id: selectedPatientId };
     
@@ -905,6 +962,12 @@ export default function App() {
   };
 
   const handleDemoLogin = async () => {
+    if (!isSupabaseConfigured) {
+      setUser({ id: 'mock-medico', email: 'medico@demo.com' });
+      setUserProfile({ id: 'mock-medico', role: 'Medico', full_name: 'Dr. Jesús Monteón (Demo)' });
+      setAuthLoading(false);
+      return;
+    }
     const { error } = await supabase.auth.signInWithPassword({
       email: 'medicina_interna@demo.com',
       password: 'prueba1234'
@@ -921,6 +984,12 @@ export default function App() {
   };
 
   const handleAssistantLogin = async () => {
+    if (!isSupabaseConfigured) {
+      setUser({ id: 'mock-asistente', email: 'asistente@demo.com' });
+      setUserProfile({ id: 'mock-asistente', role: 'Asistente', full_name: 'Asistente Clínica (Demo)' });
+      setAuthLoading(false);
+      return;
+    }
     const email = 'asistente@demo.com';
     const password = 'prueba123';
     const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -944,6 +1013,12 @@ export default function App() {
     e.preventDefault();
     if (!selectedPatientId) return;
 
+    if (!isSupabaseConfigured) {
+      alert('Modo Demo: Historia guardada localmente (no persistente)');
+      setIsHistoryModalOpen(false);
+      return;
+    }
+
     const formData = new FormData(e.currentTarget);
     const historyData = Object.fromEntries(formData.entries());
 
@@ -965,6 +1040,12 @@ export default function App() {
   const handleSaveVitals = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!selectedPatientId) return;
+
+    if (!isSupabaseConfigured) {
+      alert('Modo Demo: Signos vitales guardados localmente (no persistente)');
+      setIsVitalsModalOpen(false);
+      return;
+    }
 
     const formData = new FormData(e.currentTarget);
     const vitalsData = Object.fromEntries(formData.entries());
