@@ -746,7 +746,17 @@ export default function App() {
       return;
     }
     const formData = new FormData(e.currentTarget);
-    const data = Object.fromEntries(formData.entries());
+    const rawData = Object.fromEntries(formData.entries());
+    
+    // Handle single date input
+    const start_time = rawData.start_time as string;
+    const end_time = new Date(new Date(start_time).getTime() + 30 * 60000).toISOString();
+    
+    const data = {
+      ...rawData,
+      end_time,
+      type: 'presencial' // Default type
+    };
     
     if (editingAppointment) {
       const { error } = await supabase.from('appointments').update(data).eq('id', editingAppointment.id);
@@ -1196,7 +1206,7 @@ export default function App() {
     const filePath = `avatars/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
-      .from('avatars')
+      .from('media')
       .upload(filePath, file);
 
     if (uploadError) {
@@ -1205,7 +1215,7 @@ export default function App() {
     }
 
     const { data: { publicUrl } } = supabase.storage
-      .from('avatars')
+      .from('media')
       .getPublicUrl(filePath);
 
     const { error: updateError } = await supabase
@@ -2278,20 +2288,16 @@ export default function App() {
               {patients.map(p => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
             </select>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Inicio</label>
-              <input type="datetime-local" name="start_time" required defaultValue={editingAppointment?.start_time ? new Date(editingAppointment.start_time).toISOString().slice(0, 16) : ''} className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm outline-none" />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Fin</label>
-              <input type="datetime-local" name="end_time" required defaultValue={editingAppointment?.end_time ? new Date(editingAppointment.end_time).toISOString().slice(0, 16) : ''} className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm outline-none" />
-            </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Fecha y Hora de la Cita</label>
+            <input 
+              type="datetime-local" 
+              name="start_time" 
+              required 
+              defaultValue={editingAppointment?.start_time ? new Date(editingAppointment.start_time).toISOString().slice(0, 16) : ''} 
+              className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm outline-none" 
+            />
           </div>
-          <select name="type" defaultValue={editingAppointment?.type || 'presencial'} className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm outline-none">
-            <option value="presencial">Presencial</option>
-            <option value="virtual">Virtual (Telemedicina)</option>
-          </select>
           <textarea name="notes" defaultValue={editingAppointment?.notes} placeholder="Notas adicionales..." className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm outline-none resize-none h-24" />
           <button type="submit" className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold">{editingAppointment ? "Guardar Cambios" : "Agendar Cita"}</button>
         </form>
