@@ -57,6 +57,7 @@ import {
 import { format, isToday, parseISO, startOfDay, endOfDay } from 'date-fns';
 import { GoogleGenAI } from "@google/genai";
 import { supabase } from './lib/supabase';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { Patient, PatientDetail, LabResult, Appointment, UserProfile } from './types';
 import { MOCK_PATIENTS, MOCK_APPOINTMENTS, getMockPatientDetail } from './mockData';
 
@@ -125,12 +126,13 @@ const ClinicalHistoryView = ({ detail, onEdit, onAddVitals }: { detail: PatientD
 
       {/* Modern Graphics Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Card className="h-[350px]">
+        <Card className="h-[400px] flex flex-col">
           <h4 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-indigo-500" /> Tendencia de Presión Arterial
           </h4>
-          <ResponsiveContainer width="100%" height="80%">
-            <LineChart data={vitals}>
+          <div className="flex-1 min-h-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={vitals}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
               <XAxis 
                 dataKey="created_at" 
@@ -151,14 +153,16 @@ const ClinicalHistoryView = ({ detail, onEdit, onAddVitals }: { detail: PatientD
               <Line type="monotone" dataKey="ta_diastolic" name="Diastólica" stroke="#818cf8" strokeWidth={3} dot={{r: 4, fill: '#818cf8'}} activeDot={{r: 6}} />
             </LineChart>
           </ResponsiveContainer>
+          </div>
         </Card>
 
-        <Card className="h-[350px]">
+        <Card className="h-[400px] flex flex-col">
           <h4 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
             <Activity className="w-4 h-4 text-rose-500" /> Frecuencia Cardiaca y SatO2
           </h4>
-          <ResponsiveContainer width="100%" height="80%">
-            <AreaChart data={vitals}>
+          <div className="flex-1 min-h-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={vitals}>
               <defs>
                 <linearGradient id="colorFc" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.1}/>
@@ -185,6 +189,7 @@ const ClinicalHistoryView = ({ detail, onEdit, onAddVitals }: { detail: PatientD
               <Line type="monotone" dataKey="sato2" name="SatO2 (%)" stroke="#10b981" strokeWidth={3} dot={{r: 4, fill: '#10b981'}} />
             </AreaChart>
           </ResponsiveContainer>
+          </div>
         </Card>
       </div>
 
@@ -472,56 +477,83 @@ export default function App() {
     }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) fetchProfile(session.user.id);
-      setAuthLoading(false);
+      if (session?.user) {
+        setUser(session.user);
+        fetchProfile(session.user.id).finally(() => {
+          setAuthLoading(false);
+        });
+      } else {
+        setUser(null);
+        setAuthLoading(false);
+      }
     }).catch(err => {
       console.error("Session fetch error:", err);
       setAuthLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) fetchProfile(session.user.id);
-      else setUserProfile(null);
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      if (currentUser) {
+        fetchProfile(currentUser.id);
+      } else {
+        setUserProfile(null);
+      }
     });
 
     return () => subscription.unsubscribe();
   }, [isSupabaseConfigured]);
 
   const fetchProfile = async (userId: string) => {
-    const localProfile = localStorage.getItem(`profile_${userId}`);
-    const parsedLocal = localProfile ? JSON.parse(localProfile) : null;
-
-    if (!isSupabaseConfigured) {
-      setUserProfile(parsedLocal || {
-        id: userId,
-        role: 'Medico',
-        full_name: 'Dr. Jesús Monteón (Demo)',
-        avatar_url: null
-      });
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
-    
-    if (error) {
-      // Fallback to metadata if profile table doesn't exist yet
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUserProfile({
-          id: user.id,
-          role: (user.user_metadata?.role as any) || 'Medico',
-          full_name: user.user_metadata?.full_name,
-          ...parsedLocal
-        });
+    try {
+      const localProfile = localStorage.getItem(`profile_${userId}`);
+      let parsedLocal = null;
+      try {
+        parsedLocal = localProfile ? JSON.parse(localProfile) : null;
+      } catch (e) {
+        console.error("Error parsing local profile:", e);
       }
-    } else {
-      setUserProfile({ ...data, ...parsedLocal });
+
+      if (!isSupabaseConfigured) {
+        setUserProfile(parsedLocal || {
+          id: userId,
+          role: 'Medico',
+          full_name: 'Dr. Jesús Monteón (Demo)',
+          avatar_url: null
+        });
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      if (error) {
+        // Fallback to metadata if profile table doesn't exist yet or other error
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData?.user) {
+          setUserProfile({
+            id: userData.user.id,
+            role: (userData.user.user_metadata?.role as any) || 'Medico',
+            full_name: userData.user.user_metadata?.full_name || 'Usuario',
+            ...parsedLocal
+          });
+        } else {
+          // Final fallback
+          setUserProfile({
+            id: userId,
+            role: 'Medico',
+            full_name: 'Usuario',
+            ...parsedLocal
+          });
+        }
+      } else {
+        setUserProfile({ ...data, ...parsedLocal });
+      }
+    } catch (err) {
+      console.error("Error in fetchProfile:", err);
     }
   };
 
@@ -1357,7 +1389,7 @@ export default function App() {
                 <option>Último mes</option>
               </select>
             </div>
-            <div className="h-80 w-full">
+            <div className="h-80 w-full min-h-[320px]">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={[
                   { day: 'Lun', val: 12 }, { day: 'Mar', val: 18 }, { day: 'Mie', val: 15 },
@@ -1780,7 +1812,8 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden relative">
+    <ErrorBoundary>
+      <div className="flex h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden relative">
       <AnimatePresence>
         {showInstallBanner && (
           <motion.div 
@@ -2568,6 +2601,7 @@ export default function App() {
           <p className="text-slate-500 font-bold">Esta calculadora estará disponible en la próxima actualización.</p>
         </div>
       </Modal>
-    </div>
+      </div>
+    </ErrorBoundary>
   );
 }
