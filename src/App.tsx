@@ -748,14 +748,18 @@ export default function App() {
     const formData = new FormData(e.currentTarget);
     const rawData = Object.fromEntries(formData.entries());
     
-    // Handle single date input
-    const start_time = rawData.start_time as string;
+    // Combine date and time inputs
+    const date = rawData.appointment_date as string;
+    const time = rawData.appointment_time as string;
+    const start_time = new Date(`${date}T${time}`).toISOString();
     const end_time = new Date(new Date(start_time).getTime() + 30 * 60000).toISOString();
     
     const data = {
-      ...rawData,
+      patient_id: rawData.patient_id,
+      notes: rawData.notes,
+      start_time,
       end_time,
-      type: 'presencial' // Default type
+      type: 'presencial'
     };
     
     if (editingAppointment) {
@@ -2288,15 +2292,27 @@ export default function App() {
               {patients.map(p => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
             </select>
           </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Fecha y Hora de la Cita</label>
-            <input 
-              type="datetime-local" 
-              name="start_time" 
-              required 
-              defaultValue={editingAppointment?.start_time ? new Date(editingAppointment.start_time).toISOString().slice(0, 16) : ''} 
-              className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm outline-none" 
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Fecha</label>
+              <input 
+                type="date" 
+                name="appointment_date" 
+                required 
+                defaultValue={editingAppointment?.start_time ? new Date(editingAppointment.start_time).toISOString().split('T')[0] : ''} 
+                className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm outline-none" 
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Hora</label>
+              <input 
+                type="time" 
+                name="appointment_time" 
+                required 
+                defaultValue={editingAppointment?.start_time ? new Date(editingAppointment.start_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : ''} 
+                className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm outline-none" 
+              />
+            </div>
           </div>
           <textarea name="notes" defaultValue={editingAppointment?.notes} placeholder="Notas adicionales..." className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm outline-none resize-none h-24" />
           <button type="submit" className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold">{editingAppointment ? "Guardar Cambios" : "Agendar Cita"}</button>
