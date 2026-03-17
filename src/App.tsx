@@ -1192,13 +1192,24 @@ export default function App() {
     );
   };
 
+  const isSupabaseConfigured = (import.meta as any).env.VITE_SUPABASE_URL && (import.meta as any).env.VITE_SUPABASE_ANON_KEY;
+
   // --- Render ---
 
   if (authLoading) return <div className="h-screen flex items-center justify-center bg-slate-50 font-bold text-indigo-600 animate-pulse">Cargando MedInterna...</div>;
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+        {!isSupabaseConfigured && (
+          <div className="mb-6 w-full max-w-md bg-rose-50 border border-rose-200 p-4 rounded-2xl flex items-start gap-3 text-rose-700">
+            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-bold">Configuración Incompleta</p>
+              <p className="text-xs opacity-80">Faltan las variables de entorno de Supabase en Vercel. La aplicación no podrá iniciar sesión.</p>
+            </div>
+          </div>
+        )}
         <Card className="w-full max-w-md">
           <div className="text-center mb-8">
             <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200 mx-auto mb-4">
