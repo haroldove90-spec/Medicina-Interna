@@ -330,8 +330,13 @@ const Card: React.FC<{ children: React.ReactNode, className?: string }> = ({ chi
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'patients' | 'agenda' | 'tools' | 'profile' | 'media'>('dashboard');
-  const [user, setUser] = useState<any>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [user, setUser] = useState<any>({ id: 'demo-user', email: 'demo@example.com' });
+  const [userProfile, setUserProfile] = useState<UserProfile | null>({
+    id: 'demo-user',
+    role: 'Medico',
+    full_name: 'Dr. Jesús Monteón (Demo)',
+    avatar_url: null
+  });
   const [authLoading, setAuthLoading] = useState(true);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [showPassword, setShowPassword] = useState(false);
@@ -457,6 +462,9 @@ export default function App() {
   };
 
   useEffect(() => {
+    // Desactivado temporalmente para bypass
+    setAuthLoading(false);
+    /*
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (session?.user) fetchProfile(session.user.id);
@@ -473,6 +481,7 @@ export default function App() {
     });
 
     return () => subscription.unsubscribe();
+    */
   }, []);
 
   const fetchProfile = async (userId: string) => {
@@ -1222,6 +1231,15 @@ export default function App() {
             <h3 className="font-bold text-slate-800 text-xl">Resumen General</h3>
           </div>
           <div className="flex flex-wrap gap-3">
+            <button 
+              onClick={() => {
+                setUserProfile(prev => prev ? { ...prev, role: prev.role === 'Medico' ? 'Asistente' : 'Medico' } : null);
+              }}
+              className="flex-1 sm:flex-none px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl text-xs font-bold hover:bg-emerald-100 transition-all flex items-center justify-center gap-2"
+            >
+              <UserIcon className="w-4 h-4" />
+              Cambiar a {userProfile?.role === 'Medico' ? 'Asistente' : 'Médico'}
+            </button>
             <button 
               onClick={() => setIsPatientModalOpen(true)}
               className="flex-1 sm:flex-none px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-100"
