@@ -1736,7 +1736,7 @@ export default function App() {
 
       {/* Sidebar */}
       <aside className={`
-        fixed inset-y-0 left-0 w-72 bg-white border-r border-slate-200 flex flex-col z-50 shadow-sm transition-transform duration-300 lg:relative lg:translate-x-0
+        fixed inset-y-0 left-0 w-72 bg-white border-r border-slate-200 flex flex-col z-50 shadow-sm transition-transform duration-300 lg:relative lg:translate-x-0 overflow-y-auto custom-scrollbar
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <div className="p-8">
@@ -1827,6 +1827,13 @@ export default function App() {
               />
             </div>
             <button className="p-2 text-slate-400 hover:text-indigo-600 transition-colors"><Bell className="w-5 h-5" /></button>
+            <button 
+              onClick={handleLogout}
+              className="p-2 text-slate-400 hover:text-rose-500 transition-colors"
+              title="Cerrar Sesión"
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
             <button 
               onClick={() => setActiveTab('profile')}
               className="w-10 h-10 bg-slate-100 rounded-full border-2 border-white shadow-sm overflow-hidden hover:border-indigo-100 transition-all"
