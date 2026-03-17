@@ -1,15 +1,22 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL;
-const supabaseAnonKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL?.trim();
+const supabaseAnonKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY?.trim();
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error('Supabase credentials missing. Please check your environment variables.');
 }
 
-// Use a dummy URL if missing to prevent createClient from throwing, 
-// but it will still fail on actual requests which we handle.
-export const supabase = createClient(
-  supabaseUrl || 'https://placeholder.supabase.co', 
-  supabaseAnonKey || 'placeholder'
-);
+let client: any;
+try {
+  client = createClient(
+    supabaseUrl || 'https://placeholder.supabase.co', 
+    supabaseAnonKey || 'placeholder'
+  );
+} catch (error) {
+  console.error('Error initializing Supabase client. Invalid URL?', error);
+  // Fallback to a dummy client that won't crash the app
+  client = createClient('https://placeholder.supabase.co', 'placeholder');
+}
+
+export const supabase = client;

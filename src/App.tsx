@@ -1194,15 +1194,21 @@ export default function App() {
   // --- Views ---
 
   const DashboardView = () => {
-    const todayAppointments = appointments.filter(a => isToday(parseISO(a.start_time)));
+    const todayAppointments = appointments.filter(a => {
+      try { return a.start_time && isToday(parseISO(a.start_time)); } catch { return false; }
+    });
     
     // Calculate weekly and monthly appointments
     const now = new Date();
     const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     
-    const weekAppointments = appointments.filter(a => parseISO(a.start_time) >= startOfWeek);
-    const monthAppointments = appointments.filter(a => parseISO(a.start_time) >= startOfMonth);
+    const weekAppointments = appointments.filter(a => {
+      try { return a.start_time && parseISO(a.start_time) >= startOfWeek; } catch { return false; }
+    });
+    const monthAppointments = appointments.filter(a => {
+      try { return a.start_time && parseISO(a.start_time) >= startOfMonth; } catch { return false; }
+    });
     
     // Assume $500 per appointment for income calculation
     const estimatedIncome = monthAppointments.length * 500;
