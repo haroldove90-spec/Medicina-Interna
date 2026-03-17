@@ -33,7 +33,12 @@ import {
   Menu,
   Download,
   Smartphone,
-  HeartPulse
+  HeartPulse,
+  Image,
+  Camera,
+  Upload,
+  Key,
+  FolderOpen
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -324,7 +329,7 @@ const Card: React.FC<{ children: React.ReactNode, className?: string }> = ({ chi
 // --- Main App ---
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'patients' | 'agenda' | 'tools'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'patients' | 'agenda' | 'tools' | 'profile' | 'media'>('dashboard');
   const [user, setUser] = useState<any>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -1065,6 +1070,90 @@ export default function App() {
     }
   };
 
+  const handleUpdateProfile = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!user) return;
+
+    if (!isSupabaseConfigured) {
+      alert('Modo Demo: Perfil actualizado localmente (no persistente)');
+      return;
+    }
+
+    const formData = new FormData(e.currentTarget);
+    const full_name = formData.get('full_name') as string;
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ full_name, updated_at: new Date().toISOString() })
+      .eq('id', user.id);
+
+    if (error) alert('Error al actualizar perfil: ' + error.message);
+    else {
+      alert('Perfil actualizado con éxito');
+      fetchProfile(user.id);
+    }
+  };
+
+  const handleUpdatePassword = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const password = formData.get('password') as string;
+    const confirmPassword = formData.get('confirmPassword') as string;
+
+    if (password !== confirmPassword) {
+      alert('Las contraseñas no coinciden');
+      return;
+    }
+
+    if (!isSupabaseConfigured) {
+      alert('Modo Demo: Contraseña "actualizada" (no persistente)');
+      return;
+    }
+
+    const { error } = await supabase.auth.updateUser({ password });
+
+    if (error) alert('Error al actualizar contraseña: ' + error.message);
+    else {
+      alert('Contraseña actualizada con éxito');
+      (e.target as HTMLFormElement).reset();
+    }
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    if (!isSupabaseConfigured) {
+      alert('Modo Demo: Foto "subida" (no persistente)');
+      return;
+    }
+
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${user.id}-${Math.random()}.${fileExt}`;
+    const filePath = `avatars/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, file);
+
+    if (uploadError) {
+      alert('Error al subir imagen: ' + uploadError.message);
+      return;
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(filePath);
+
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ avatar_url: publicUrl })
+      .eq('id', user.id);
+
+    if (updateError) alert('Error al vincular imagen: ' + updateError.message);
+    else fetchProfile(user.id);
+  };
+
   // --- Views ---
 
   const DashboardView = () => {
@@ -1091,7 +1180,19 @@ export default function App() {
     return (
       <div className="space-y-8 animate-in fade-in duration-500">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <h3 className="font-bold text-slate-800 text-xl">Resumen General</h3>
+          <div className="flex items-center gap-4">
+            {userProfile?.role === 'Medico' && (
+              <div className="w-12 h-12 rounded-xl overflow-hidden shadow-md">
+                <img 
+                  src="https://img.freepik.com/vector-premium/plantilla-logotipo-sanitario_1283348-17032.jpg?semt=ais_hybrid&w=740&q=80" 
+                  className="w-full h-full object-cover"
+                  alt="Medico Logo"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+            )}
+            <h3 className="font-bold text-slate-800 text-xl">Resumen General</h3>
+          </div>
           <div className="flex flex-wrap gap-3">
             <button 
               onClick={() => setIsPatientModalOpen(true)}
@@ -1187,6 +1288,176 @@ export default function App() {
     );
   };
 
+  const ProfileView = () => {
+    return (
+      <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="flex flex-col md:flex-row gap-8">
+          {/* Avatar Section */}
+          <Card className="md:w-1/3 flex flex-col items-center text-center">
+            <div className="relative group">
+              <div className="w-32 h-32 rounded-3xl overflow-hidden shadow-2xl border-4 border-white mb-4">
+                <img 
+                  src={userProfile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.id}`} 
+                  alt="Avatar" 
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <label className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-3xl cursor-pointer">
+                <Camera className="w-8 h-8 text-white" />
+                <input type="file" className="hidden" accept="image/*" onChange={handleAvatarUpload} />
+              </label>
+            </div>
+            <h3 className="font-bold text-slate-800 text-lg">{userProfile?.full_name || 'Usuario'}</h3>
+            <p className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full mt-2 uppercase tracking-widest">{userProfile?.role}</p>
+            <p className="text-xs text-slate-400 mt-4">{user?.email}</p>
+          </Card>
+
+          {/* Settings Section */}
+          <div className="md:w-2/3 space-y-8">
+            <Card>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-indigo-50 rounded-lg"><UserIcon className="w-5 h-5 text-indigo-600" /></div>
+                <h3 className="font-bold text-slate-800">Datos Personales</h3>
+              </div>
+              <form onSubmit={handleUpdateProfile} className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Nombre Completo</label>
+                  <input 
+                    name="full_name"
+                    type="text" 
+                    defaultValue={userProfile?.full_name}
+                    className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm outline-none focus:ring-2 focus:ring-indigo-500/10"
+                    placeholder="Tu nombre..."
+                  />
+                </div>
+                <button type="submit" className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold text-sm hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100">Actualizar Datos</button>
+              </form>
+            </Card>
+
+            <Card>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-rose-50 rounded-lg"><Key className="w-5 h-5 text-rose-600" /></div>
+                <h3 className="font-bold text-slate-800">Seguridad</h3>
+              </div>
+              <form onSubmit={handleUpdatePassword} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Nueva Contraseña</label>
+                    <input 
+                      name="password"
+                      type="password" 
+                      className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm outline-none focus:ring-2 focus:ring-indigo-500/10"
+                      placeholder="••••••••"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Confirmar Contraseña</label>
+                    <input 
+                      name="confirmPassword"
+                      type="password" 
+                      className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm outline-none focus:ring-2 focus:ring-indigo-500/10"
+                      placeholder="••••••••"
+                    />
+                  </div>
+                </div>
+                <button type="submit" className="w-full bg-white border-2 border-slate-100 text-slate-600 py-4 rounded-2xl font-bold text-sm hover:bg-slate-50 transition-all">Cambiar Contraseña</button>
+              </form>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const MediaView = () => {
+    const [mediaFiles, setMediaFiles] = useState<any[]>([]);
+    const [isUploading, setIsUploading] = useState(false);
+
+    const fetchMedia = async () => {
+      if (!isSupabaseConfigured) return;
+      const { data, error } = await supabase.storage.from('media').list();
+      if (error) console.error(error);
+      else setMediaFiles(data || []);
+    };
+
+    useEffect(() => {
+      fetchMedia();
+    }, []);
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      if (!isSupabaseConfigured) {
+        alert('Modo Demo: Archivo "subido" (no persistente)');
+        return;
+      }
+
+      setIsUploading(true);
+      const fileName = `${Date.now()}-${file.name}`;
+      const { error } = await supabase.storage.from('media').upload(fileName, file);
+
+      if (error) alert('Error al subir: ' + error.message);
+      else {
+        fetchMedia();
+        alert('Archivo subido con éxito');
+      }
+      setIsUploading(false);
+    };
+
+    return (
+      <div className="space-y-8 animate-in fade-in duration-500">
+        <div className="flex items-center justify-between">
+          <h3 className="font-bold text-slate-800 text-xl">Gestión de Medios</h3>
+          <label className="px-6 py-3 bg-indigo-600 text-white rounded-2xl font-bold text-sm hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 cursor-pointer flex items-center gap-2">
+            <Upload className="w-4 h-4" />
+            {isUploading ? 'Subiendo...' : 'Subir Archivo'}
+            <input type="file" className="hidden" onChange={handleFileUpload} />
+          </label>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
+          {mediaFiles.length > 0 ? mediaFiles.map((file, i) => {
+            const { data: { publicUrl } } = supabase.storage.from('media').getPublicUrl(file.name);
+            const isImage = file.name.match(/\.(jpg|jpeg|png|gif|svg|webp)$/i);
+            
+            return (
+              <motion.div 
+                key={i} 
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: i * 0.05 }}
+                className="group relative aspect-square bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-xl transition-all"
+              >
+                {isImage ? (
+                  <img src={publicUrl} alt={file.name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50">
+                    <FolderOpen className="w-8 h-8 text-slate-300" />
+                    <p className="text-[8px] font-bold text-slate-400 mt-2 px-2 text-center truncate w-full">{file.name}</p>
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                  <a href={publicUrl} target="_blank" rel="noreferrer" className="p-2 bg-white/20 backdrop-blur-md rounded-xl text-white hover:bg-white/40 transition-all">
+                    <Download className="w-4 h-4" />
+                  </a>
+                </div>
+              </motion.div>
+            );
+          }) : (
+            <div className="col-span-full py-20 text-center">
+              <div className="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center mx-auto mb-4 text-slate-300">
+                <Image className="w-10 h-10" />
+              </div>
+              <p className="text-slate-400 font-bold">No hay archivos en la biblioteca</p>
+              <p className="text-xs text-slate-300 mt-1">Sube fotos o documentos para verlos aquí</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const ToolsView = () => {
     const [bmi, setBmi] = useState<{ weight: string, height: string, result: number | null }>({ weight: '', height: '', result: null });
     
@@ -1277,7 +1548,19 @@ export default function App() {
 
   // --- Render ---
 
-  if (authLoading) return <div className="h-screen flex items-center justify-center bg-slate-50 font-bold text-indigo-600 animate-pulse">Cargando MedInterna...</div>;
+  if (authLoading) return (
+    <div className="h-screen flex flex-col items-center justify-center bg-slate-50 font-bold text-indigo-600">
+      <motion.img 
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.5, repeat: Infinity, repeatType: "reverse" }}
+        src="https://img.freepik.com/vector-premium/plantilla-logotipo-sanitario_1283348-17032.jpg?semt=ais_hybrid&w=740&q=80" 
+        className="w-32 h-32 rounded-3xl shadow-2xl mb-6 object-cover"
+        referrerPolicy="no-referrer"
+      />
+      <div className="animate-pulse">Cargando MedInterna...</div>
+    </div>
+  );
 
   if (!user) {
     return (
@@ -1293,8 +1576,13 @@ export default function App() {
         )}
         <Card className="w-full max-w-md">
           <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200 mx-auto mb-4">
-              <Stethoscope className="w-10 h-10 text-white" />
+            <div className="w-24 h-24 mx-auto mb-4 overflow-hidden rounded-2xl shadow-lg shadow-indigo-100">
+              <img 
+                src="https://img.freepik.com/vector-premium/plantilla-logotipo-sanitario_1283348-17032.jpg?semt=ais_hybrid&w=740&q=80" 
+                className="w-full h-full object-cover"
+                alt="Logo"
+                referrerPolicy="no-referrer"
+              />
             </div>
             <h1 className="text-2xl font-bold text-slate-800">Dr. Jesús Monteón</h1>
             <p className="text-slate-400 text-sm mt-2">Medicina Interna - Gestión Clínica</p>
@@ -1429,8 +1717,13 @@ export default function App() {
         <div className="p-8">
           <div className="flex items-center justify-between mb-10">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200">
-                <HeartPulse className="w-6 h-6 text-white" />
+              <div className="w-12 h-12 overflow-hidden rounded-xl shadow-lg shadow-indigo-100">
+                <img 
+                  src="https://img.freepik.com/vector-premium/plantilla-logotipo-sanitario_1283348-17032.jpg?semt=ais_hybrid&w=740&q=80" 
+                  className="w-full h-full object-cover"
+                  alt="Logo"
+                  referrerPolicy="no-referrer"
+                />
               </div>
               <h1 className="font-bold text-lg text-slate-800">Dr. Monteón</h1>
             </div>
@@ -1445,6 +1738,8 @@ export default function App() {
               { id: 'patients', label: 'Pacientes', icon: Users, roles: ['Medico'] },
               { id: 'agenda', label: 'Agenda', icon: Calendar, roles: ['Medico', 'Asistente'] },
               { id: 'tools', label: 'Herramientas', icon: Calculator, roles: ['Medico'] },
+              { id: 'media', label: 'Medios', icon: Image, roles: ['Medico'] },
+              { id: 'profile', label: 'Perfil', icon: UserIcon, roles: ['Medico', 'Asistente'] },
             ].filter(item => item.roles.includes(userProfile?.role || 'Medico')).map(item => (
               <button
                 key={item.id}
@@ -1464,7 +1759,14 @@ export default function App() {
           <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Soporte Premium</p>
             <p className="text-xs text-slate-600 leading-relaxed mb-4">Acceso directo a consultoría técnica 24/7.</p>
-            <button className="w-full py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-bold text-slate-800 hover:bg-slate-100 transition-all">Contactar</button>
+            <a 
+              href="https://wa.me/525624222449" 
+              target="_blank" 
+              rel="noreferrer"
+              className="block w-full py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-bold text-slate-800 hover:bg-slate-100 transition-all text-center"
+            >
+              Contactar
+            </a>
           </div>
           <button 
             onClick={handleLogout}
@@ -1500,14 +1802,19 @@ export default function App() {
               />
             </div>
             <button className="p-2 text-slate-400 hover:text-indigo-600 transition-colors"><Bell className="w-5 h-5" /></button>
-            <div className="w-10 h-10 bg-slate-100 rounded-full border-2 border-white shadow-sm overflow-hidden">
-              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="Doctor" />
-            </div>
+            <button 
+              onClick={() => setActiveTab('profile')}
+              className="w-10 h-10 bg-slate-100 rounded-full border-2 border-white shadow-sm overflow-hidden hover:border-indigo-100 transition-all"
+            >
+              <img src={userProfile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.id}`} alt="Doctor" />
+            </button>
           </div>
         </header>
 
         <div className="flex-1 overflow-y-auto p-6 lg:p-10 custom-scrollbar">
           {activeTab === 'dashboard' && <DashboardView />}
+          {activeTab === 'profile' && <ProfileView />}
+          {activeTab === 'media' && <MediaView />}
           
           {activeTab === 'patients' && (
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-10 h-full">

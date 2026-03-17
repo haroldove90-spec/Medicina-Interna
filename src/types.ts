@@ -2,6 +2,7 @@ export interface UserProfile {
   id: string;
   role: 'Medico' | 'Asistente';
   full_name?: string;
+  avatar_url?: string;
 }
 
 export interface Patient {
