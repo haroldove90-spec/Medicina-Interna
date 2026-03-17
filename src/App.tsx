@@ -473,6 +473,19 @@ export default function App() {
   }, []);
 
   const fetchProfile = async (userId: string) => {
+    const localProfile = localStorage.getItem(`profile_${userId}`);
+    const parsedLocal = localProfile ? JSON.parse(localProfile) : null;
+
+    if (!isSupabaseConfigured) {
+      setUserProfile(parsedLocal || {
+        id: userId,
+        role: 'Medico',
+        full_name: 'Dr. Jesús Monteón (Demo)',
+        avatar_url: null
+      });
+      return;
+    }
+
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -486,11 +499,12 @@ export default function App() {
         setUserProfile({
           id: user.id,
           role: (user.user_metadata?.role as any) || 'Medico',
-          full_name: user.user_metadata?.full_name
+          full_name: user.user_metadata?.full_name,
+          ...parsedLocal
         });
       }
     } else {
-      setUserProfile(data);
+      setUserProfile({ ...data, ...parsedLocal });
     }
   };
 
@@ -1074,13 +1088,16 @@ export default function App() {
     e.preventDefault();
     if (!user) return;
 
-    if (!isSupabaseConfigured) {
-      alert('Modo Demo: Perfil actualizado localmente (no persistente)');
-      return;
-    }
-
     const formData = new FormData(e.currentTarget);
     const full_name = formData.get('full_name') as string;
+
+    if (!isSupabaseConfigured) {
+      const updated = { ...userProfile, full_name };
+      localStorage.setItem(`profile_${user.id}`, JSON.stringify(updated));
+      setUserProfile(updated as any);
+      alert('Modo Demo: Perfil actualizado en tu navegador');
+      return;
+    }
 
     const { error } = await supabase
       .from('profiles')
@@ -1124,7 +1141,15 @@ export default function App() {
     if (!file || !user) return;
 
     if (!isSupabaseConfigured) {
-      alert('Modo Demo: Foto "subida" (no persistente)');
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        const updated = { ...userProfile, avatar_url: base64String };
+        localStorage.setItem(`profile_${user.id}`, JSON.stringify(updated));
+        setUserProfile(updated as any);
+        alert('Modo Demo: Foto guardada en tu navegador');
+      };
+      reader.readAsDataURL(file);
       return;
     }
 
