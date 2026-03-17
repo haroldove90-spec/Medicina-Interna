@@ -1594,11 +1594,11 @@ export default function App() {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
         {!isSupabaseConfigured && (
-          <div className="mb-6 w-full max-w-md bg-rose-50 border border-rose-200 p-4 rounded-2xl flex items-start gap-3 text-rose-700">
+          <div className="mb-6 w-full max-w-md bg-amber-50 border border-amber-200 p-4 rounded-2xl flex items-start gap-3 text-amber-700">
             <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-bold">Configuración Incompleta</p>
-              <p className="text-xs opacity-80">Faltan las variables de entorno de Supabase en Vercel. La aplicación no podrá iniciar sesión.</p>
+              <p className="text-sm font-bold">Modo Demo Activado</p>
+              <p className="text-xs opacity-80">No se ha conectado una base de datos. Los cambios se guardarán localmente en tu navegador.</p>
             </div>
           </div>
         )}
