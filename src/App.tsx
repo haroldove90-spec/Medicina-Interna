@@ -772,6 +772,19 @@ export default function App() {
         fetchAppointments();
       }
     } else {
+      // Check for duplicates
+      const { data: existing } = await supabase
+        .from('appointments')
+        .select('id')
+        .eq('patient_id', data.patient_id)
+        .eq('start_time', data.start_time)
+        .maybeSingle();
+
+      if (existing) {
+        alert('Ya existe una cita para este paciente en este horario.');
+        return;
+      }
+
       const { error } = await supabase.from('appointments').insert([data]);
       if (error) {
         alert('Error al agendar cita: ' + error.message);
@@ -1153,8 +1166,11 @@ export default function App() {
 
     const { error } = await supabase
       .from('profiles')
-      .update({ full_name, updated_at: new Date().toISOString() })
-      .eq('id', user.id);
+      .upsert({ 
+        id: user.id,
+        full_name, 
+        updated_at: new Date().toISOString() 
+      });
 
     if (error) alert('Error al actualizar perfil: ' + error.message);
     else {
@@ -1168,6 +1184,16 @@ export default function App() {
     const formData = new FormData(e.currentTarget);
     const password = formData.get('password') as string;
     const confirmPassword = formData.get('confirmPassword') as string;
+
+    if (!password) {
+      alert('Por favor, introduce una nueva contraseña');
+      return;
+    }
+
+    if (password.length < 6) {
+      alert('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
 
     if (password !== confirmPassword) {
       alert('Las contraseñas no coinciden');
@@ -1211,10 +1237,14 @@ export default function App() {
 
     const { error: uploadError } = await supabase.storage
       .from('media')
-      .upload(filePath, file);
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
 
     if (uploadError) {
-      alert('Error al subir imagen: ' + uploadError.message);
+      console.error('Upload error:', uploadError);
+      alert('Error al subir imagen: ' + uploadError.message + '. Asegúrate de haber configurado las Políticas (Policies) en el bucket "media" de Supabase.');
       return;
     }
 
@@ -2218,7 +2248,25 @@ export default function App() {
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Tipo de Cita</p>
                           <span className="px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-[10px] font-bold uppercase">{app.type}</span>
                         </div>
-                        <button className="p-3 text-slate-300 hover:text-indigo-600 transition-colors"><MoreHorizontal className="w-5 h-5" /></button>
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => {
+                              setEditingAppointment(app);
+                              setIsAppointmentModalOpen(true);
+                            }}
+                            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                            title="Editar Cita"
+                          >
+                            <Settings className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteAppointment(app.id)}
+                            className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                            title="Eliminar Cita"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
