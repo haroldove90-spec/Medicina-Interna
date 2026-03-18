@@ -1,21 +1,22 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL?.trim();
-const supabaseAnonKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY?.trim();
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim();
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Supabase credentials missing. Please check your environment variables.');
+  console.warn('Supabase credentials missing. App will run in Demo Mode.');
 }
 
 let client: any;
 try {
-  client = createClient(
-    supabaseUrl || 'https://placeholder.supabase.co', 
-    supabaseAnonKey || 'placeholder'
-  );
+  if (supabaseUrl && supabaseAnonKey && supabaseUrl !== 'https://placeholder.supabase.co') {
+    client = createClient(supabaseUrl, supabaseAnonKey);
+  } else {
+    // Fallback to a dummy client that won't crash the app
+    client = createClient('https://placeholder.supabase.co', 'placeholder');
+  }
 } catch (error) {
-  console.error('Error initializing Supabase client. Invalid URL?', error);
-  // Fallback to a dummy client that won't crash the app
+  console.error('Error initializing Supabase client:', error);
   client = createClient('https://placeholder.supabase.co', 'placeholder');
 }
 

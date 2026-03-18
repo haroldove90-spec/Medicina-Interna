@@ -382,7 +382,7 @@ export default function App() {
     }
   }, [userProfile, activeTab]);
 
-  const isSupabaseConfigured = (import.meta as any).env.VITE_SUPABASE_URL && (import.meta as any).env.VITE_SUPABASE_ANON_KEY;
+  const isSupabaseConfigured = import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY;
 
   const fetchPatients = async () => {
     if (!isSupabaseConfigured) {
